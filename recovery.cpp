@@ -924,25 +924,41 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
     ui->SetStage(st_cur, st_max);
   }
 
-  // Extract the YYYYMMDD / YYYYMMDD_HHMMSS timestamp from the full version string.
-  // Assume the first instance of "-[0-9]{8}-", or "-[0-9]{8}_[0-9]{6}-" in case
-  // LINEAGE_VERSION_APPEND_TIME_OF_DAY is set to true has the desired date.
-  std::string ver = android::base::GetProperty("ro.afterlife.version", "");
-  std::smatch ver_date_match;
-  std::regex_search(ver, ver_date_match, std::regex("-(\\d{8}(_\\d{6})?)-"));
-  std::string ver_date = ver_date_match.str(1);  // Empty if no match.
+  // Get short version and codename
+std::string short_ver =
+        android::base::GetProperty("ro.afterlife.build.version", "(unknown)");
+std::string codename =
+        android::base::GetProperty("ro.afterlife.version.codename", "");
 
-  std::vector<std::string> title_lines = {
-    "Version " + android::base::GetProperty("ro.afterlife.build.version", "(unknown)") +
-        " (" + ver_date + ")",
-  };
-  title_lines.push_back("Product name - " + android::base::GetProperty("ro.product.device", ""));
-  if (android::base::GetBoolProperty("ro.build.ab_update", false)) {
-    std::string slot = android::base::GetProperty("ro.boot.slot_suffix", "");
-    if (android::base::StartsWith(slot, "_")) slot.erase(0, 1);
+// Build version string
+std::string ver = short_ver;
+if (!codename.empty()) {
+    ver += " | " + codename;
+}
+
+// Title lines
+std::vector<std::string> title_lines = {
+    "Version: " + ver,
+};
+
+// Product name
+title_lines.push_back(
+    "Product name - " +
+    android::base::GetProperty("ro.product.device", "")
+);
+
+// A/B slot info
+if (android::base::GetBoolProperty("ro.build.ab_update", false)) {
+    std::string slot =
+            android::base::GetProperty("ro.boot.slot_suffix", "");
+    if (android::base::StartsWith(slot, "_")) {
+        slot.erase(0, 1);
+    }
     title_lines.push_back("Active slot: " + slot);
-  }
-  ui->SetTitle(title_lines);
+}
+
+// Apply title
+ui->SetTitle(title_lines);
 
   ui->ResetKeyInterruptStatus();
   device->StartRecovery();
